@@ -1,0 +1,2632 @@
+# PROMPT MAÎTRE — CONCEPTION ET DÉVELOPPEMENT DE GEOINDEXPY
+
+## 1. IDENTITÉ DU PROJET
+
+Je souhaite développer une bibliothèque Python open source nommée **GeoIndexPy**.
+
+GeoIndexPy est le pendant Python du projet R **GeoIndexR**, mais il ne doit pas être une simple traduction ligne par ligne.
+
+Le projet doit être conçu comme une **bibliothèque Python scientifique, moderne, robuste, extensible, performante et documentée**, destinée principalement à la télédétection, à la géomatique, à l'analyse d'images multispectrales et à la data science géospatiale.
+
+### Nom
+
+```text
+GeoIndexPy
+```
+
+### Domaine
+
+* Télédétection
+* Géomatique
+* Earth Observation
+* Remote Sensing
+* Analyse d'images multispectrales
+* Analyse d'images hyperspectrales
+* Données raster
+* Data Science géospatiale
+* Calcul d'indices spectraux
+* Machine Learning géospatial à terme
+
+---
+
+# 2. OBJECTIF GÉNÉRAL
+
+GeoIndexPy doit permettre de calculer facilement, rapidement et de manière reproductible des **indices spectraux et géospatiaux** à partir de données raster.
+
+L'objectif est de permettre des opérations simples comme :
+
+```python
+import geoindexpy
+
+ndvi = geoindexpy.ndvi(
+    nir=nir,
+    red=red
+)
+```
+
+ou :
+
+```python
+result = geoindexpy.calculate_index(
+    image,
+    index="NDVI"
+)
+```
+
+ou encore :
+
+```python
+results = geoindexpy.calculate_indices(
+    image,
+    indices=["NDVI", "NDWI", "NDBI"]
+)
+```
+
+La bibliothèque doit également permettre :
+
+```python
+geoindexpy.list_indices()
+```
+
+afin que l'utilisateur puisse découvrir les indices disponibles.
+
+---
+
+# 3. PRINCIPES DE CONCEPTION
+
+Le projet doit respecter les principes suivants :
+
+1. API simple pour les débutants.
+2. API avancée pour les utilisateurs scientifiques.
+3. Architecture modulaire.
+4. Forte extensibilité.
+5. Calculs vectorisés.
+6. Bonne gestion de la mémoire.
+7. Conservation des propriétés géospatiales.
+8. Validation rigoureuse des données.
+9. Messages d'erreur explicites.
+10. Documentation scientifique.
+11. Tests unitaires et scientifiques.
+12. Typage Python.
+13. Compatibilité avec les standards modernes Python.
+14. Minimisation des dépendances.
+15. Reproductibilité.
+16. Aucun comportement silencieux dangereux.
+17. Séparation entre calcul scientifique, données raster et visualisation.
+18. Préparation à une publication sur PyPI.
+
+---
+
+# 4. POSITIONNEMENT PAR RAPPORT À GEOINDEXR
+
+GeoIndexPy doit reprendre les concepts fondamentaux de GeoIndexR :
+
+```text
+Image raster
+      ↓
+Identification des bandes
+      ↓
+Validation
+      ↓
+Sélection de l'indice
+      ↓
+Calcul
+      ↓
+Raster résultat
+```
+
+GeoIndexR utilise notamment `terra`, tandis que GeoIndexPy doit privilégier l'écosystème Python adapté.
+
+L'architecture Python doit notamment étudier :
+
+```text
+NumPy
+Rasterio
+xarray
+rioxarray
+GeoPandas
+Shapely
+Dask
+```
+
+Cependant, **ne pas rendre toutes ces bibliothèques obligatoires**.
+
+Il faut distinguer :
+
+### Core dependencies
+
+Bibliothèques indispensables au moteur.
+
+### Optional dependencies
+
+Bibliothèques activées uniquement pour certaines fonctionnalités :
+
+```text
+visualisation
+cloud processing
+xarray
+dask
+geopandas
+```
+
+---
+
+# 5. ARCHITECTURE GÉNÉRALE
+
+L'architecture cible doit être conceptuellement organisée ainsi :
+
+```text
+                         GeoIndexPy
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+       Core API           Index Engine        Raster Engine
+          │                   │                   │
+          │             ┌─────┼─────┐             │
+          │             │     │     │             │
+       calculate()   vegetation water soil      Raster
+       calculate_   urban      moisture         Metadata
+       indices()    burn       salinity         CRS
+       calculate_   agriculture                Resolution
+       all()                                   Transform
+```
+
+Puis :
+
+```text
+                 GeoIndexPy
+                     │
+       ┌─────────────┼─────────────┐
+       │             │             │
+   Data Layer    Index Layer    Utility Layer
+       │             │             │
+ Rasterio       Registry       Validation
+ xarray         Formulas        Scaling
+ NumPy          Metadata        Band mapping
+```
+
+---
+
+# 6. STRUCTURE DU PACKAGE
+
+Prévoir une structure moderne :
+
+```text
+geoindexpy/
+│
+├── pyproject.toml
+├── README.md
+├── LICENSE
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── CITATION.cff
+├── .gitignore
+│
+├── src/
+│   └── geoindexpy/
+│       │
+│       ├── __init__.py
+│       ├── version.py
+│       │
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── engine.py
+│       │   ├── registry.py
+│       │   ├── index.py
+│       │   └── result.py
+│       │
+│       ├── indices/
+│       │   ├── __init__.py
+│       │   ├── vegetation.py
+│       │   ├── water.py
+│       │   ├── soil.py
+│       │   ├── urban.py
+│       │   ├── moisture.py
+│       │   ├── burn.py
+│       │   └── salinity.py
+│       │
+│       ├── bands/
+│       │   ├── __init__.py
+│       │   ├── mapping.py
+│       │   ├── resolver.py
+│       │   └── sensors.py
+│       │
+│       ├── raster/
+│       │   ├── __init__.py
+│       │   ├── io.py
+│       │   ├── metadata.py
+│       │   └── validation.py
+│       │
+│       ├── utils/
+│       │   ├── __init__.py
+│       │   ├── math.py
+│       │   ├── validation.py
+│       │   └── scaling.py
+│       │
+│       └── visualization/
+│           ├── __init__.py
+│           └── plotting.py
+│
+├── tests/
+│   ├── unit/
+│   ├── scientific/
+│   ├── integration/
+│   └── fixtures/
+│
+├── docs/
+│   ├── index.md
+│   ├── installation.md
+│   ├── quickstart.md
+│   ├── indices/
+│   ├── sensors/
+│   ├── tutorials/
+│   └── api/
+│
+└── examples/
+    ├── basic_ndvi.py
+    ├── multispectral.py
+    ├── sentinel2.py
+    └── landsat.py
+```
+
+La structure pourra être adaptée si une organisation plus pertinente est identifiée.
+
+---
+
+# 7. API PUBLIQUE
+
+L'API publique doit être extrêmement claire.
+
+Les fonctions centrales doivent être :
+
+```python
+calculate_index()
+calculate_indices()
+calculate_all()
+list_indices()
+get_index_info()
+```
+
+Exemple :
+
+```python
+import geoindexpy
+
+ndvi = geoindexpy.calculate_index(
+    image,
+    index="NDVI"
+)
+```
+
+---
+
+# 8. API DIRECTE DES INDICES
+
+Prévoir également des fonctions spécialisées :
+
+```python
+geoindexpy.ndvi()
+geoindexpy.savi()
+geoindexpy.evi()
+geoindexpy.gndvi()
+
+geoindexpy.ndwi()
+geoindexpy.mndwi()
+geoindexpy.ndmi()
+
+geoindexpy.ndbi()
+geoindexpy.bsi()
+```
+
+Exemple :
+
+```python
+ndvi = geoindexpy.ndvi(
+    nir=nir,
+    red=red
+)
+```
+
+Ces fonctions doivent utiliser le même moteur scientifique que l'API générique.
+
+Il ne faut donc pas avoir deux implémentations différentes de la formule NDVI.
+
+---
+
+# 9. TYPES D'ENTRÉE
+
+GeoIndexPy doit être capable de travailler progressivement avec plusieurs représentations.
+
+## Niveau 1
+
+NumPy :
+
+```python
+numpy.ndarray
+```
+
+## Niveau 2
+
+Rasterio :
+
+```python
+rasterio.DatasetReader
+```
+
+## Niveau 3
+
+xarray :
+
+```python
+xarray.DataArray
+xarray.Dataset
+```
+
+## Niveau 4
+
+rioxarray :
+
+```python
+rioxarray.DataArray
+```
+
+L'architecture doit séparer :
+
+```text
+calcul scientifique
+        ↓
+gestion des données
+```
+
+Ainsi, une formule comme :
+
+```python
+(NIR - RED) / (NIR + RED)
+```
+
+ne doit pas être dépendante exclusivement de Rasterio.
+
+---
+
+# 10. SUPPORT NUMPY
+
+Le moteur mathématique doit fonctionner avec :
+
+```python
+numpy.ndarray
+```
+
+Exemple :
+
+```python
+nir = np.array(...)
+red = np.array(...)
+
+ndvi = geoindexpy.ndvi(
+    nir=nir,
+    red=red
+)
+```
+
+Le calcul doit être vectorisé.
+
+Ne jamais parcourir les pixels avec :
+
+```python
+for pixel in ...
+```
+
+lorsque NumPy permet un calcul vectorisé.
+
+---
+
+# 11. SUPPORT RASTERIO
+
+Prévoir une interface permettant de lire des rasters :
+
+```python
+from geoindexpy import open_raster
+
+image = open_raster(
+    "sentinel2.tif"
+)
+```
+
+Mais ne pas réimplémenter inutilement Rasterio.
+
+GeoIndexPy doit s'appuyer sur Rasterio pour :
+
+* lecture ;
+* écriture ;
+* CRS ;
+* transform ;
+* dimensions ;
+* résolution ;
+* metadata.
+
+---
+
+# 12. SUPPORT XARRAY
+
+Prévoir une architecture compatible avec :
+
+```python
+xarray.DataArray
+```
+
+et :
+
+```python
+xarray.Dataset
+```
+
+Ceci est particulièrement important pour :
+
+* séries temporelles ;
+* cubes de données ;
+* données satellitaires multidimensionnelles ;
+* traitement scientifique.
+
+Exemple :
+
+```python
+ndvi = geoindexpy.ndvi(
+    nir=dataset["nir"],
+    red=dataset["red"]
+)
+```
+
+---
+
+# 13. INDICES INITIAUX
+
+La première version doit implémenter au minimum :
+
+## Végétation
+
+```text
+NDVI
+SAVI
+EVI
+GNDVI
+```
+
+## Eau
+
+```text
+NDWI
+MNDWI
+```
+
+## Humidité
+
+```text
+NDMI
+```
+
+## Urbain
+
+```text
+NDBI
+```
+
+## Sol
+
+```text
+BSI
+```
+
+---
+
+# 14. FORMULES
+
+Chaque formule doit être implémentée explicitement et documentée.
+
+## NDVI
+
+```text
+NDVI = (NIR - RED) / (NIR + RED)
+```
+
+## SAVI
+
+```text
+SAVI = ((NIR - RED) / (NIR + RED + L)) × (1 + L)
+```
+
+avec :
+
+```text
+L = 0.5
+```
+
+par défaut.
+
+## EVI
+
+```text
+EVI =
+G × (NIR - RED)
+-------------------------
+NIR + C1×RED - C2×BLUE + L
+```
+
+Paramètres par défaut :
+
+```text
+G  = 2.5
+C1 = 6
+C2 = 7.5
+L  = 1
+```
+
+## GNDVI
+
+```text
+GNDVI = (NIR - GREEN) / (NIR + GREEN)
+```
+
+## NDWI
+
+```text
+NDWI = (GREEN - NIR) / (GREEN + NIR)
+```
+
+## MNDWI
+
+```text
+MNDWI = (GREEN - SWIR) / (GREEN + SWIR)
+```
+
+## NDBI
+
+```text
+NDBI = (SWIR - NIR) / (SWIR + NIR)
+```
+
+## NDMI
+
+```text
+NDMI = (NIR - SWIR) / (NIR + SWIR)
+```
+
+Pour chaque formule, identifier précisément la variante utilisée.
+
+---
+
+# 15. REGISTRE DES INDICES
+
+Créer un registre central.
+
+Exemple conceptuel :
+
+```python
+registry = IndexRegistry()
+```
+
+Il doit permettre :
+
+```python
+registry.list()
+```
+
+```python
+registry.get("NDVI")
+```
+
+```python
+registry.info("NDVI")
+```
+
+Chaque indice doit posséder des métadonnées :
+
+```text
+name
+short_name
+description
+category
+formula
+required_bands
+parameters
+reference
+version
+```
+
+Exemple conceptuel :
+
+```python
+{
+    "name": "Normalized Difference Vegetation Index",
+    "short_name": "NDVI",
+    "category": "vegetation",
+    "required_bands": ["nir", "red"],
+}
+```
+
+---
+
+# 16. AJOUT D'INDICES PAR PLUGIN / EXTENSION
+
+L'architecture doit permettre à terme d'ajouter de nouveaux indices sans modifier le cœur du package.
+
+Étudier une architecture de type :
+
+```text
+BaseIndex
+     ↓
+NDVI
+SAVI
+EVI
+NDWI
+...
+```
+
+ou une architecture fonctionnelle basée sur des métadonnées.
+
+L'objectif est qu'un développeur puisse éventuellement ajouter :
+
+```text
+MSAVI
+OSAVI
+ARVI
+NBR
+NDSI
+NDRE
+```
+
+sans réécrire le moteur central.
+
+---
+
+# 17. BAND RESOLVER
+
+Créer un système intelligent de résolution des bandes.
+
+Exemple :
+
+```python
+resolve_band(
+    image,
+    "nir"
+)
+```
+
+Le système doit comprendre différents noms possibles :
+
+```text
+nir
+NIR
+B08
+B8
+Band_8
+SR_B5
+```
+
+mais **ne jamais faire une déduction risquée silencieusement**.
+
+Si plusieurs bandes correspondent :
+
+```text
+AmbiguousBandError
+```
+
+doit être levée.
+
+---
+
+# 18. BAND MAPPING
+
+Permettre un mapping explicite :
+
+```python
+mapping = {
+    "blue": "B02",
+    "green": "B03",
+    "red": "B04",
+    "nir": "B08",
+    "swir1": "B11",
+    "swir2": "B12"
+}
+```
+
+Puis :
+
+```python
+calculate_index(
+    image,
+    index="NDVI",
+    bands=mapping
+)
+```
+
+---
+
+# 19. SUPPORT DES CAPTEURS
+
+Préparer une architecture pour :
+
+### Sentinel-2
+
+```text
+B02 → Blue
+B03 → Green
+B04 → Red
+B08 → NIR
+B11 → SWIR1
+B12 → SWIR2
+```
+
+### Landsat
+
+Prévoir les mappings propres aux différentes générations.
+
+L'architecture doit permettre :
+
+```python
+sensor="sentinel2"
+```
+
+ou :
+
+```python
+sensor="landsat8"
+```
+
+Cependant, ne pas prétendre identifier automatiquement un capteur si les métadonnées ne permettent pas une identification fiable.
+
+---
+
+# 20. CALCUL MULTI-INDICES
+
+Permettre :
+
+```python
+result = calculate_indices(
+    image,
+    indices=[
+        "NDVI",
+        "NDWI",
+        "NDBI",
+        "NDMI"
+    ]
+)
+```
+
+Le résultat doit pouvoir être représenté comme :
+
+```text
+NDVI
+NDWI
+NDBI
+NDMI
+```
+
+dans un Dataset multidimensionnel ou une structure raster appropriée.
+
+---
+
+# 21. CALCUL AUTOMATIQUE
+
+Créer :
+
+```python
+calculate_all(image)
+```
+
+Cette fonction doit rechercher les indices compatibles avec les bandes disponibles.
+
+Exemple :
+
+```text
+Image :
+Blue
+Green
+Red
+NIR
+SWIR
+```
+
+Le moteur détermine quels indices peuvent être calculés.
+
+Il doit retourner éventuellement :
+
+```python
+{
+    "available": [...],
+    "missing_bands": {...}
+}
+```
+
+Ne jamais échouer silencieusement.
+
+---
+
+# 22. VALIDATION
+
+Créer une couche complète de validation.
+
+Vérifier :
+
+```text
+type
+shape
+dimensions
+CRS
+transform
+resolution
+extent
+band names
+missing bands
+NaN
+Inf
+NoData
+dtype
+```
+
+Exemple :
+
+```text
+MissingBandError:
+NDVI requires:
+    nir
+    red
+
+Available bands:
+    blue
+    green
+    red
+
+Missing:
+    nir
+```
+
+---
+
+# 23. DIVISION PAR ZÉRO
+
+Le moteur doit gérer :
+
+```text
+NIR + RED = 0
+```
+
+sans produire silencieusement :
+
+```text
+inf
+```
+
+Définir une stratégie cohérente.
+
+Par exemple :
+
+```python
+safe_divide(
+    numerator,
+    denominator
+)
+```
+
+avec retour configurable :
+
+```text
+NaN
+NoData
+masked value
+```
+
+Le comportement doit être documenté.
+
+---
+
+# 24. GESTION DES NaN / Inf / NoData
+
+Prendre en charge :
+
+```text
+NaN
+Inf
+-Inf
+NoData
+masked pixels
+```
+
+Il faut éviter les transformations implicites.
+
+Prévoir éventuellement :
+
+```python
+handle_invalid="nan"
+```
+
+ou :
+
+```python
+handle_invalid="mask"
+```
+
+mais ne pas multiplier les paramètres inutilement dans l'API principale.
+
+---
+
+# 25. SCALING / REFLECTANCE
+
+Le package doit explicitement documenter le problème des valeurs :
+
+```text
+0–10000
+```
+
+versus :
+
+```text
+0–1
+```
+
+Ne jamais appliquer automatiquement :
+
+```python
+reflectance = values / 10000
+```
+
+sans indication explicite.
+
+Prévoir éventuellement :
+
+```python
+scale_factor=0.0001
+```
+
+ou une fonction dédiée :
+
+```python
+apply_scale(...)
+```
+
+Le comportement doit être totalement transparent.
+
+Les indices normalisés sont généralement invariants à un facteur multiplicatif commun, tandis que les indices comportant des constantes additives nécessitent davantage d'attention.
+
+---
+
+# 26. MÉTADONNÉES GÉOSPATIALES
+
+Lorsqu'un raster géoréférencé est utilisé, le résultat doit conserver :
+
+```text
+CRS
+transform
+resolution
+width
+height
+extent
+georeferencing
+```
+
+Aucune information géospatiale ne doit être perdue pendant le calcul.
+
+---
+
+# 27. RESULT OBJECT
+
+Étudier la création d'un objet :
+
+```python
+IndexResult
+```
+
+permettant éventuellement de stocker :
+
+```text
+index
+data
+metadata
+statistics
+source
+parameters
+```
+
+Mais ne pas créer une abstraction inutile si elle complique l'utilisation.
+
+L'utilisateur doit toujours pouvoir accéder facilement aux données.
+
+---
+
+# 28. STATISTIQUES
+
+Prévoir :
+
+```python
+summary(ndvi)
+```
+
+avec :
+
+```text
+min
+max
+mean
+median
+std
+valid_pixels
+nodata_pixels
+percentiles
+```
+
+Exemple :
+
+```text
+Index: NDVI
+
+Minimum: -0.92
+Maximum: 0.97
+Mean: 0.43
+Median: 0.48
+Std: 0.17
+NoData: 2.1%
+```
+
+---
+
+# 29. VISUALISATION
+
+Créer éventuellement :
+
+```python
+plot_index(ndvi)
+```
+
+La visualisation doit rester légère.
+
+GeoIndexPy ne doit pas devenir un package complet de cartographie.
+
+Les utilisateurs doivent pouvoir continuer à utiliser :
+
+```text
+matplotlib
+rasterio.plot
+xarray.plot
+geopandas
+folium
+```
+
+selon leurs besoins.
+
+---
+
+# 30. SUPPORT DES GRANDS RASTERS
+
+Le package doit être conçu pour de grandes images.
+
+Éviter :
+
+```python
+array.flatten()
+```
+
+ou :
+
+```python
+array.tolist()
+```
+
+lorsqu'ils entraînent une consommation mémoire inutile.
+
+Privilégier :
+
+```text
+NumPy vectorisé
+windowed reading
+block processing
+Dask
+lazy computation
+```
+
+lorsque nécessaire.
+
+---
+
+# 31. DASK
+
+Dask doit être considéré comme une dépendance optionnelle.
+
+Exemple futur :
+
+```python
+calculate_index(
+    image,
+    index="NDVI",
+    chunks="auto"
+)
+```
+
+L'objectif est de permettre le traitement de données dépassant la mémoire RAM.
+
+Cette fonctionnalité peut être développée après la première version stable.
+
+---
+
+# 32. CLOUD OPTIMIZED GEOTIFF
+
+Prévoir à terme le support efficace de :
+
+```text
+COG
+```
+
+et éventuellement :
+
+```text
+HTTP range requests
+```
+
+sans télécharger inutilement toute l'image.
+
+Cette fonctionnalité doit être étudiée dans une version ultérieure.
+
+---
+
+# 33. SUPPORT HYPERSPECTRAL
+
+L'architecture ne doit pas être limitée aux images multispectrales.
+
+À long terme, GeoIndexPy pourrait travailler avec :
+
+```text
+multispectral
+hyperspectral
+spectral cubes
+```
+
+mais cette fonctionnalité ne doit pas compliquer inutilement la V1.
+
+---
+
+# 34. TYPES DE DONNÉES
+
+Tester notamment :
+
+```text
+float32
+float64
+int16
+uint16
+```
+
+Les conversions doivent être contrôlées.
+
+Éviter les pertes de précision inutiles.
+
+---
+
+# 35. TESTS SCIENTIFIQUES
+
+Pour chaque indice, utiliser des valeurs connues.
+
+Exemple :
+
+```text
+NIR = 0.8
+RED = 0.2
+```
+
+alors :
+
+```text
+NDVI = 0.6
+```
+
+Le test doit vérifier le résultat.
+
+Tester également :
+
+```text
+valeurs négatives
+zéro
+NoData
+NaN
+Inf
+grands tableaux
+petits tableaux
+```
+
+---
+
+# 36. TESTS UNITAIRES
+
+Utiliser :
+
+```text
+pytest
+```
+
+Prévoir :
+
+```text
+tests/unit/
+tests/scientific/
+tests/integration/
+```
+
+Tester :
+
+* formules ;
+* registry ;
+* band resolver ;
+* validation ;
+* metadata ;
+* multi-indices ;
+* erreurs ;
+* capteurs.
+
+---
+
+# 37. PROPERTY-BASED TESTING
+
+Étudier l'utilisation de :
+
+```text
+Hypothesis
+```
+
+pour tester des propriétés mathématiques.
+
+Par exemple, pour NDVI :
+
+```text
+NDVI doit être compris entre -1 et 1
+```
+
+dans des conditions numériques appropriées.
+
+Cette approche doit compléter les tests classiques.
+
+---
+
+# 38. TESTS DE NON-RÉGRESSION
+
+Chaque bug scientifique corrigé doit idéalement produire un test.
+
+Créer une politique :
+
+```text
+Bug
+ ↓
+Correction
+ ↓
+Regression test
+```
+
+---
+
+# 39. BENCHMARKS
+
+Créer un espace :
+
+```text
+benchmarks/
+```
+
+pour comparer :
+
+```text
+NumPy
+Rasterio
+xarray
+Dask
+```
+
+selon les cas.
+
+Mesurer :
+
+```text
+temps
+mémoire
+taille raster
+nombre de pixels
+```
+
+Ne pas optimiser prématurément.
+
+---
+
+# 40. DOCUMENTATION SCIENTIFIQUE
+
+Chaque indice doit avoir :
+
+```text
+Nom
+Nom complet
+Formule
+Bandes nécessaires
+Catégorie
+Applications
+Limites
+Intervalle attendu
+Référence scientifique
+Exemple Python
+```
+
+Les références scientifiques doivent être vérifiées avant publication.
+
+---
+
+# 41. DOCUMENTATION UTILISATEUR
+
+Créer une documentation avec :
+
+```text
+MkDocs
+```
+
+ou une solution moderne équivalente.
+
+Prévoir :
+
+```text
+Home
+Installation
+Quickstart
+API Reference
+Indices
+Sensors
+Tutorials
+Examples
+FAQ
+Contributing
+```
+
+---
+
+# 42. QUICKSTART
+
+L'utilisateur doit pouvoir comprendre GeoIndexPy en moins d'une minute.
+
+Exemple :
+
+```python
+import geoindexpy
+
+image = geoindexpy.open_raster(
+    "sentinel2.tif"
+)
+
+ndvi = geoindexpy.calculate_index(
+    image,
+    "NDVI"
+)
+```
+
+Puis :
+
+```python
+geoindexpy.plot_index(ndvi)
+```
+
+---
+
+# 43. README
+
+Le README doit commencer par :
+
+```text
+GeoIndexPy
+```
+
+puis :
+
+```text
+A Python library for spectral and geospatial index computation.
+```
+
+Présenter immédiatement :
+
+* objectif ;
+* installation ;
+* quickstart ;
+* indices ;
+* exemples ;
+* documentation ;
+* tests ;
+* licence ;
+* statut ;
+* contribution.
+
+---
+
+# 44. INSTALLATION
+
+Prévoir :
+
+```bash
+pip install geoindexpy
+```
+
+et installation de développement :
+
+```bash
+git clone ...
+cd geoindexpy
+pip install -e ".[dev]"
+```
+
+---
+
+# 45. PYPROJECT.TOML
+
+Le projet doit utiliser :
+
+```text
+pyproject.toml
+```
+
+et non un ancien :
+
+```text
+setup.py
+```
+
+sauf nécessité spécifique.
+
+Choisir une architecture de build moderne.
+
+Étudier :
+
+```text
+hatchling
+```
+
+ou :
+
+```text
+setuptools
+```
+
+ou une autre solution moderne pertinente.
+
+---
+
+# 46. TYPAGE PYTHON
+
+Le projet doit utiliser les type hints.
+
+Exemple :
+
+```python
+def ndvi(
+    nir: ArrayLike,
+    red: ArrayLike
+) -> ArrayLike:
+    ...
+```
+
+Prévoir des types propres.
+
+Étudier :
+
+```text
+numpy.typing
+```
+
+et les types nécessaires pour Rasterio/xarray.
+
+---
+
+# 47. QUALITÉ DU CODE
+
+Utiliser :
+
+```text
+ruff
+pytest
+mypy
+pre-commit
+```
+
+ou des outils équivalents.
+
+Le code doit être :
+
+* lisible ;
+* formaté ;
+* typé ;
+* testé ;
+* documenté.
+
+---
+
+# 48. CI/CD
+
+Configurer GitHub Actions.
+
+Prévoir :
+
+```text
+tests
+lint
+type checking
+build
+package validation
+```
+
+Tester plusieurs versions Python supportées.
+
+Par exemple :
+
+```text
+Python 3.10
+Python 3.11
+Python 3.12
+Python 3.13
+```
+
+La liste exacte devra être décidée selon les versions réellement supportées par les dépendances.
+
+---
+
+# 49. PUBLICATION PYPI
+
+Préparer :
+
+```text
+PyPI
+```
+
+Le projet doit pouvoir être installé avec :
+
+```bash
+pip install geoindexpy
+```
+
+Prévoir :
+
+```text
+build
+twine
+```
+
+ou le workflow moderne approprié.
+
+Avant publication :
+
+```text
+tests
+lint
+documentation
+build
+package validation
+```
+
+---
+
+# 50. VERSIONING
+
+Utiliser :
+
+```text
+Semantic Versioning
+```
+
+Exemple :
+
+```text
+0.1.0
+0.2.0
+1.0.0
+```
+
+---
+
+# 51. ROADMAP
+
+## Version 0.1.0
+
+Core :
+
+```text
+NDVI
+NDWI
+NDBI
+NDMI
+SAVI
+EVI
+GNDVI
+MNDWI
+BSI
+```
+
+Plus :
+
+```text
+registry
+band mapping
+validation
+NumPy
+Rasterio
+tests
+documentation
+```
+
+---
+
+## Version 0.2.0
+
+Ajouter :
+
+```text
+MSAVI
+OSAVI
+NBR
+NDSI
+NDRE
+```
+
+Améliorer :
+
+```text
+sensor mapping
+xarray
+statistics
+visualization
+```
+
+---
+
+## Version 0.3.0
+
+Ajouter :
+
+```text
+Dask
+large raster processing
+COG
+cloud workflows
+```
+
+---
+
+## Version 0.4.0
+
+Explorer :
+
+```text
+hyperspectral
+time series
+STAC
+Earth observation collections
+```
+
+---
+
+## Version 1.0.0
+
+Objectif :
+
+```text
+API stable
+scientifically documented
+well tested
+performant
+PyPI ready
+```
+
+---
+
+# 52. FUTURE — STAC
+
+Étudier à terme l'intégration avec :
+
+```text
+STAC
+```
+
+afin de permettre éventuellement :
+
+```text
+catalogue
+    ↓
+collection
+    ↓
+item
+    ↓
+asset
+    ↓
+raster
+    ↓
+GeoIndexPy
+```
+
+Cette fonctionnalité doit être optionnelle.
+
+---
+
+# 53. FUTURE — SENTINEL / LANDSAT
+
+Prévoir à terme des workflows :
+
+```text
+Sentinel-2
+Landsat 8
+Landsat 9
+```
+
+avec mapping automatique des bandes.
+
+---
+
+# 54. FUTURE — TIME SERIES
+
+Prévoir :
+
+```python
+calculate_time_series(
+    dataset,
+    index="NDVI"
+)
+```
+
+permettant d'obtenir :
+
+```text
+date
+NDVI
+```
+
+pour plusieurs acquisitions.
+
+---
+
+# 55. FUTURE — AGRICULTURE
+
+GeoIndexPy pourra servir de moteur pour des applications agricoles :
+
+```text
+Sentinel-2
+ ↓
+NDVI
+ ↓
+série temporelle
+ ↓
+analyse de végétation
+```
+
+Mais GeoIndexPy ne doit pas automatiquement transformer un indice en diagnostic agronomique.
+
+---
+
+# 56. FUTURE — URBANISATION
+
+Workflow :
+
+```text
+Image
+ ↓
+NDBI
+ ↓
+analyse spatiale
+ ↓
+évolution de l'urbanisation
+```
+
+---
+
+# 57. FUTURE — HYDROLOGIE
+
+Workflow :
+
+```text
+Image
+ ↓
+NDWI / MNDWI
+ ↓
+surfaces en eau
+ ↓
+analyse spatiale
+```
+
+---
+
+# 58. FUTURE — API WEB
+
+Ne pas développer immédiatement une API web.
+
+Mais concevoir le core afin qu'il puisse être utilisé ultérieurement dans :
+
+```text
+FastAPI
+Django
+Flask
+Jupyter
+QGIS
+```
+
+---
+
+# 59. FUTURE — QGIS
+
+GeoIndexPy pourrait éventuellement devenir le moteur Python d'un futur plugin QGIS.
+
+Architecture cible :
+
+```text
+QGIS Plugin
+      ↓
+GeoIndexPy
+      ↓
+Index Engine
+      ↓
+Raster
+```
+
+Il faut donc éviter de coupler le package directement à QGIS.
+
+---
+
+# 60. JUPYTER
+
+Tous les exemples scientifiques doivent fonctionner facilement dans :
+
+```text
+Jupyter Notebook
+```
+
+Prévoir un dossier :
+
+```text
+examples/
+notebooks/
+```
+
+avec des workflows pédagogiques.
+
+---
+
+# 61. DONNÉES DE TEST
+
+Ne pas intégrer de grosses images satellites dans le package.
+
+Créer de petits jeux de données :
+
+```text
+synthetic_multispectral.tif
+```
+
+avec :
+
+```text
+blue
+green
+red
+nir
+swir1
+swir2
+```
+
+Prévoir également des fixtures NumPy.
+
+---
+
+# 62. QUALITÉ SCIENTIFIQUE
+
+GeoIndexPy doit clairement distinguer :
+
+```text
+calcul
+```
+
+de :
+
+```text
+interprétation
+```
+
+La bibliothèque calcule un indice.
+
+Elle ne doit pas prétendre automatiquement :
+
+```text
+NDVI élevé = bonne santé agricole
+```
+
+sans contexte scientifique supplémentaire.
+
+Documenter les facteurs pouvant affecter les résultats :
+
+* capteur ;
+* résolution ;
+* correction atmosphérique ;
+* nuages ;
+* ombres ;
+* qualité radiométrique ;
+* résolution spectrale ;
+* prétraitement ;
+* date d'acquisition ;
+* choix des bandes.
+
+---
+
+# 63. RÉFÉRENCES SCIENTIFIQUES
+
+Pour chaque indice, rechercher et documenter les publications scientifiques originales ou références reconnues.
+
+Ne jamais inventer une référence.
+
+Lorsque plusieurs variantes existent :
+
+```text
+NDWI
+NBR
+BSI
+etc.
+```
+
+indiquer précisément quelle formule est implémentée.
+
+---
+
+# 64. ERREURS PERSONNALISÉES
+
+Créer des exceptions propres :
+
+```python
+GeoIndexError
+IndexNotFoundError
+MissingBandError
+InvalidRasterError
+InvalidParameterError
+IncompatibleRasterError
+AmbiguousBandError
+UnsupportedSensorError
+```
+
+Exemple :
+
+```python
+raise MissingBandError(
+    "NDVI requires NIR and RED bands."
+)
+```
+
+---
+
+# 65. API SIMPLE
+
+Un débutant doit pouvoir faire :
+
+```python
+import geoindexpy
+
+ndvi = geoindexpy.ndvi(nir, red)
+```
+
+sans connaître toute l'architecture interne.
+
+Un utilisateur avancé doit pouvoir faire :
+
+```python
+registry = geoindexpy.get_registry()
+
+info = registry.get("NDVI")
+```
+
+et éventuellement développer ses propres indices.
+
+---
+
+# 66. EXEMPLE COMPLET SENTINEL-2
+
+Créer un exemple :
+
+```python
+import geoindexpy
+
+image = geoindexpy.open_raster(
+    "sentinel2.tif"
+)
+
+mapping = {
+    "blue": "B02",
+    "green": "B03",
+    "red": "B04",
+    "nir": "B08",
+    "swir1": "B11",
+    "swir2": "B12"
+}
+
+result = geoindexpy.calculate_indices(
+    image,
+    indices=[
+        "NDVI",
+        "NDWI",
+        "NDBI",
+        "NDMI"
+    ],
+    bands=mapping
+)
+```
+
+---
+
+# 67. EXEMPLE DIRECT NUMPY
+
+```python
+import numpy as np
+import geoindexpy
+
+nir = np.array(...)
+red = np.array(...)
+
+ndvi = geoindexpy.ndvi(
+    nir,
+    red
+)
+```
+
+---
+
+# 68. EXEMPLE PERSONNALISÉ
+
+Prévoir éventuellement :
+
+```python
+custom_index(
+    formula=...,
+    bands=...
+)
+```
+
+mais cette fonctionnalité doit être conçue soigneusement pour éviter :
+
+* exécution arbitraire de code ;
+* problèmes de sécurité ;
+* API complexe.
+
+Ne jamais utiliser naïvement :
+
+```python
+eval(user_formula)
+```
+
+---
+
+# 69. SÉCURITÉ
+
+Le package doit éviter toute exécution arbitraire.
+
+Ne jamais exécuter directement une formule fournie par l'utilisateur avec :
+
+```python
+eval()
+exec()
+```
+
+Pour les indices personnalisés, préférer :
+
+```text
+fonctions Python
+objets Index
+expressions contrôlées
+```
+
+---
+
+# 70. PERFORMANCE
+
+Les opérations doivent être vectorisées.
+
+Pour les rasters importants :
+
+```text
+NumPy
+Rasterio windowed processing
+xarray
+Dask
+```
+
+selon le contexte.
+
+Comparer les performances avec des benchmarks reproductibles.
+
+---
+
+# 71. COMPATIBILITÉ
+
+Définir clairement :
+
+```text
+Python versions
+NumPy versions
+Rasterio versions
+xarray versions
+```
+
+dans :
+
+```text
+pyproject.toml
+```
+
+et la documentation.
+
+---
+
+# 72. LICENCE
+
+Choisir une licence open source adaptée.
+
+Une option possible :
+
+```text
+MIT
+```
+
+mais le choix final doit être explicite.
+
+---
+
+# 73. CITATION
+
+Créer :
+
+```text
+CITATION.cff
+```
+
+pour permettre de citer le logiciel dans les publications scientifiques.
+
+Prévoir :
+
+```text
+authors
+title
+version
+repository
+doi
+```
+
+si un DOI est ensuite créé avec Zenodo.
+
+---
+
+# 74. ZENODO
+
+Prévoir éventuellement :
+
+```text
+GitHub
+   ↓
+Zenodo
+   ↓
+DOI
+```
+
+afin de rendre les versions du logiciel citables scientifiquement.
+
+---
+
+# 75. PUBLICATION SCIENTIFIQUE
+
+Préparer à terme un article présentant :
+
+```text
+GeoIndexPy
+```
+
+avec :
+
+1. problématique ;
+2. architecture ;
+3. méthodes ;
+4. indices ;
+5. validation ;
+6. performances ;
+7. cas d'utilisation ;
+8. limites ;
+9. reproductibilité.
+
+---
+
+# 76. COMPARAISON AVEC GEOINDEXR
+
+GeoIndexPy doit pouvoir être présenté comme :
+
+```text
+GeoIndexR
+    ↓
+R ecosystem
+    ↓
+terra
+```
+
+et :
+
+```text
+GeoIndexPy
+    ↓
+Python ecosystem
+    ↓
+NumPy / Rasterio / xarray
+```
+
+Les deux projets doivent cependant conserver des concepts scientifiques cohérents.
+
+Une même image et les mêmes bandes doivent produire des résultats compatibles dans les deux bibliothèques, sous réserve des différences numériques normales.
+
+---
+
+# 77. TEST DE COMPATIBILITÉ GEOINDEXR / GEOINDEXPY
+
+Créer à terme un protocole de validation :
+
+```text
+Image de référence
+        ↓
+GeoIndexR
+        ↓
+résultat R
+
+Image identique
+        ↓
+GeoIndexPy
+        ↓
+résultat Python
+```
+
+Comparer :
+
+```text
+min
+max
+mean
+RMSE
+MAE
+pixels valides
+```
+
+L'objectif est de vérifier la cohérence scientifique des deux implémentations.
+
+---
+
+# 78. WORKFLOW DE DÉVELOPPEMENT
+
+Ne pas générer immédiatement tout le projet.
+
+Procéder par étapes.
+
+## Étape 1
+
+Analyser le cadrage.
+
+## Étape 2
+
+Proposer l'architecture finale.
+
+## Étape 3
+
+Proposer l'arborescence.
+
+## Étape 4
+
+Définir :
+
+```text
+pyproject.toml
+```
+
+## Étape 5
+
+Définir les dépendances.
+
+## Étape 6
+
+Créer les exceptions.
+
+## Étape 7
+
+Créer le registre.
+
+## Étape 8
+
+Créer le moteur mathématique.
+
+## Étape 9
+
+Implémenter :
+
+```text
+NDVI
+NDWI
+NDBI
+```
+
+## Étape 10
+
+Ajouter :
+
+```text
+NDMI
+MNDWI
+SAVI
+EVI
+GNDVI
+BSI
+```
+
+## Étape 11
+
+Créer le band resolver.
+
+## Étape 12
+
+Créer le support Rasterio.
+
+## Étape 13
+
+Créer le multi-index.
+
+## Étape 14
+
+Créer les validations.
+
+## Étape 15
+
+Créer les tests scientifiques.
+
+## Étape 16
+
+Créer les tests d'intégration.
+
+## Étape 17
+
+Créer la documentation.
+
+## Étape 18
+
+Créer les exemples.
+
+## Étape 19
+
+Créer GitHub Actions.
+
+## Étape 20
+
+Créer les benchmarks.
+
+## Étape 21
+
+Préparer PyPI.
+
+## Étape 22
+
+Préparer Zenodo.
+
+---
+
+# 79. RÈGLE IMPORTANTE POUR L'IA DE DÉVELOPPEMENT
+
+Ne pas produire 50 fichiers immédiatement.
+
+À chaque étape :
+
+1. expliquer ce qui sera créé ;
+2. afficher l'arborescence concernée ;
+3. créer les fichiers nécessaires ;
+4. fournir le code complet ;
+5. expliquer brièvement le rôle de chaque fichier ;
+6. fournir les commandes à exécuter ;
+7. exécuter ou proposer les tests ;
+8. analyser les erreurs ;
+9. corriger ;
+10. vérifier que l'étape fonctionne ;
+11. seulement ensuite passer à l'étape suivante.
+
+---
+
+# 80. CRITÈRES DE QUALITÉ
+
+Le projet final doit être :
+
+```text
+✓ Scientifique
+✓ Pythonic
+✓ Modulaire
+✓ Extensible
+✓ Testé
+✓ Documenté
+✓ Typé
+✓ Performant
+✓ Géospatialement correct
+✓ Reproductible
+✓ Sécurisé
+✓ PyPI-ready
+```
+
+---
+
+# 81. CRITÈRES DE RÉUSSITE
+
+Un utilisateur doit pouvoir faire :
+
+```python
+import geoindexpy
+
+image = geoindexpy.open_raster(
+    "multispectral.tif"
+)
+
+ndvi = geoindexpy.calculate_index(
+    image,
+    "NDVI"
+)
+```
+
+Puis :
+
+```python
+indices = geoindexpy.calculate_indices(
+    image,
+    [
+        "NDVI",
+        "NDWI",
+        "NDBI",
+        "NDMI"
+    ]
+)
+```
+
+Et :
+
+```python
+geoindexpy.list_indices()
+```
+
+doit retourner les indices disponibles.
+
+L'utilisateur doit également pouvoir faire :
+
+```python
+nir = ...
+red = ...
+
+ndvi = geoindexpy.ndvi(
+    nir=nir,
+    red=red
+)
+```
+
+---
+
+# 82. VISION À LONG TERME
+
+GeoIndexPy doit évoluer vers une bibliothèque Python de référence pour le **calcul d'indices spectraux et géospatiaux**, tout en restant focalisée sur son cœur scientifique.
+
+Architecture cible :
+
+```text
+                         GeoIndexPy
+                              │
+       ┌──────────────────────┼──────────────────────┐
+       │                      │                      │
+  Vegetation                Water                  Soil
+       │                      │                      │
+ NDVI/SAVI/EVI          NDWI/MNDWI              BSI/...
+ GNDVI/NDRE                  │
+       │                   Moisture
+       │                      │
+       │                    NDMI
+       │
+       ├────────────── Urban
+       │                 │
+       │                NDBI
+       │
+       ├────────────── Burn
+       │                 │
+       │                NBR
+       │
+       ├────────────── Snow
+       │                 │
+       │                NDSI
+       │
+       └────────────── Future indices
+
+                     ↓
+
+              Index Registry
+                     ↓
+               Index Engine
+                     ↓
+       NumPy / Rasterio / xarray
+                     ↓
+          Raster / DataArray
+```
+
+---
+
+# 83. OBJECTIF FINAL DU PROJET
+
+L'objectif n'est pas simplement de créer quelques fonctions Python telles que :
+
+```python
+ndvi()
+ndwi()
+ndbi()
+```
+
+L'objectif est de construire un **véritable moteur scientifique d'indices spectraux**.
+
+Le concept central doit être :
+
+```text
+                 GeoIndexPy
+                     │
+                     ▼
+              Index Registry
+                     │
+                     ▼
+               Index Engine
+                     │
+        ┌────────────┼────────────┐
+        ▼            ▼            ▼
+      Bands        Formula      Metadata
+        │            │            │
+        └────────────┼────────────┘
+                     ▼
+              Validation Engine
+                     │
+                     ▼
+               Raster Engine
+                     │
+                     ▼
+             NumPy / Rasterio
+                / xarray
+                     │
+                     ▼
+                Resultat
+```
+
+Le projet doit donc être pensé comme une **infrastructure logicielle scientifique**, et non comme une collection de fonctions indépendantes.
+
+---
+
+# 84. INSTRUCTION FINALE À L'IA DE DÉVELOPPEMENT
+
+À partir de ce cahier des charges, développer **GeoIndexPy progressivement**.
+
+Commencer obligatoirement par :
+
+1. analyser le projet ;
+2. identifier les choix techniques ;
+3. identifier les dépendances obligatoires et optionnelles ;
+4. proposer l'architecture finale ;
+5. proposer l'arborescence ;
+6. définir l'API publique ;
+7. définir le modèle `Index` ;
+8. définir le registre ;
+9. définir le système de résolution des bandes ;
+10. définir les exceptions ;
+11. définir la stratégie de tests ;
+12. définir `pyproject.toml`.
+
+Ne pas commencer directement par l'implémentation de tous les indices.
+
+Après validation de l'architecture, commencer par un noyau minimal fonctionnel :
+
+```text
+NDVI
+NDWI
+NDBI
+```
+
+Puis étendre progressivement.
+
+Chaque étape doit être fonctionnelle avant de poursuivre.
+
+Le résultat final doit être un package Python :
+
+```text
+GeoIndexPy
+```
+
+propre, scientifique, extensible, testé, documenté, performant, sécurisé et publiable sur PyPI.
