@@ -71,5 +71,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/geoindex/geoindexpy/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/geoindex/geoindexpy/releases/tag/v0.1.0
+[Unreleased]: https://github.com/sowsalim01/geoindexpy/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sowsalim01/geoindexpy/releases/tag/v0.1.0

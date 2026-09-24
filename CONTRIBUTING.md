@@ -7,7 +7,7 @@ Thank you for your interest in contributing to GeoIndexPy! This document explain
 ## Development Setup
 
 ```bash
-git clone https://github.com/geoindex/geoindexpy.git
+git clone https://github.com/sowsalim01/geoindexpy.git
 cd geoindexpy
 pip install -e ".[dev]"
 ```

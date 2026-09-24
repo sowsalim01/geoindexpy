@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://pypi.org/project/geoindexpy/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-43%20passed-brightgreen)](https://github.com/geoindex/geoindexpy)
+[![Tests](https://img.shields.io/badge/tests-43%20passed-brightgreen)](https://github.com/sowsalim01/geoindexpy)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 GeoIndexPy is a modern, robust, vectorized and extensible scientific Python framework for computing **spectral and geospatial indices** from multispectral and hyperspectral satellite imagery.
@@ -46,7 +46,7 @@ pip install "geoindexpy[dev]"    # Development & testing tools
 
 ### Development Installation
 ```bash
-git clone https://github.com/geoindex/geoindexpy.git
+git clone https://github.com/sowsalim01/geoindexpy.git
 cd geoindexpy
 pip install -e ".[dev]"
 ```

@@ -71,10 +71,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/geoindex/geoindexpy"
-Documentation = "https://geoindexpy.readthedocs.io"
-Repository = "https://github.com/geoindex/geoindexpy"
-Issues = "https://github.com/geoindex/geoindexpy/issues"
+Homepage = "https://github.com/sowsalim01/geoindexpy"
+Documentation = "https://github.com/sowsalim01/geoindexpy#readme"
+Repository = "https://github.com/sowsalim01/geoindexpy"
+Issues = "https://github.com/sowsalim01/geoindexpy/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/geoindexpy"]
