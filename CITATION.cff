@@ -1,6 +1,8 @@
 cff-version: 1.2.0
 message: "If you use GeoIndexPy in your scientific research, please cite it as below."
 authors:
+  - family-names: "Sow"
+    given-names: "Mamadou"
   - family-names: "GeoIndexPy Contributors"
 title: "GeoIndexPy: A Modern Scientific Python Library for Spectral and Geospatial Index Computation"
 version: 0.1.0
