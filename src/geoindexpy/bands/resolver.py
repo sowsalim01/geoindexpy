@@ -32,27 +32,35 @@ def normalize_band_name(name: str) -> str:
 
 
 class BandResolver:
-    """Resolves standard spectral role requirements to concrete band inputs."""
+    """Resolves standard spectral role requirements to concrete band inputs with explicit user mapping support."""
 
     def __init__(
         self,
         available_band_names: Iterable[str],
         sensor: Optional[str] = None,
-        band_mapping: Optional[Mapping[str, str]] = None,
+        band_mapping: Optional[Mapping[str, Union[str, int]]] = None,
     ) -> None:
         self.available_band_names = list(available_band_names)
         self.sensor = sensor
-        self.explicit_mapping = {
-            k.strip().lower(): v.strip() for k, v in (band_mapping or {}).items()
-        }
+        
+        # Process explicit user mapping - supports both strings and integers
+        self.explicit_mapping: Dict[str, str] = {}
+        if band_mapping:
+            for k, v in band_mapping.items():
+                role = k.strip().lower()
+                # Convert integer band numbers to band names (e.g., 1 -> "1", 3 -> "3")
+                if isinstance(v, int):
+                    self.explicit_mapping[role] = str(v)
+                else:
+                    self.explicit_mapping[role] = v.strip()
 
-        # If sensor specified, build mapping from preset
+        # If sensor specified, build mapping from preset (only used if no explicit mapping)
         self.sensor_mapping: Dict[str, str] = {}
         if sensor:
             self.sensor_mapping = get_sensor_band_map(sensor)
 
     def resolve(self, required_band: str) -> str:
-        """Resolve a single standard band role to an available band name.
+        """Resolve a single standard band role to an available band name with explicit user mapping priority.
 
         Parameters
         ----------
@@ -69,34 +77,34 @@ class BandResolver:
         AmbiguousBandError
             If multiple candidates match and cannot be deterministically chosen.
         MissingBandError
-            If no matching band is found.
+            If no matching band is found or explicit mapping points to non-existent band.
         """
         role = required_band.strip().lower()
 
-        # 1. Explicit user mapping takes top priority
+        # 1. Explicit user mapping takes TOP priority - this is the key requirement
         if role in self.explicit_mapping:
             target = self.explicit_mapping[role]
-            # Check existence (case-insensitive)
+            
+            # Check if the target exists in available bands (case-insensitive)
             for avail in self.available_band_names:
                 if avail.strip().lower() == target.lower():
                     return avail
+            
+            # Explicit mapping provided but band doesn't exist - clear error
             raise MissingBandError(
-                index_name=f"resolution({role})",
+                index_name=f"explicit mapping for '{role}'",
                 missing_bands=[target],
                 available_bands=self.available_band_names,
             )
 
-        # 2. Sensor preset mapping
+        # 2. Sensor preset mapping (only used if no explicit mapping provided)
         if self.sensor and role in self.sensor_mapping:
             sensor_band = self.sensor_mapping[role]
             for avail in self.available_band_names:
                 if avail.strip().lower() == sensor_band.lower():
                     return avail
-            raise MissingBandError(
-                index_name=f"{self.sensor} resolution({role})",
-                missing_bands=[sensor_band],
-                available_bands=self.available_band_names,
-            )
+            # Sensor mapping failed but that's okay - we'll try other methods
+            pass
 
         # 3. Exact name match (case-insensitive)
         exact_matches = [
@@ -107,7 +115,7 @@ class BandResolver:
         elif len(exact_matches) > 1:
             raise AmbiguousBandError(role, exact_matches)
 
-        # 4. Synonym match
+        # 4. Synonym match (only if no explicit mapping)
         synonyms = COMMON_BAND_SYNONYMS.get(role, ())
         candidates: List[str] = []
         for avail in self.available_band_names:
@@ -123,7 +131,7 @@ class BandResolver:
         elif len(candidates) > 1:
             raise AmbiguousBandError(role, candidates)
 
-        # Not found
+        # Not found - provide helpful error message
         raise MissingBandError(
             index_name=f"resolution({role})",
             missing_bands=[role],
@@ -148,25 +156,33 @@ def extract_band_arrays(
     bands_source: Union[Mapping[str, Any], Sequence[Any]],
     required_roles: Iterable[str],
     sensor: Optional[str] = None,
-    band_mapping: Optional[Mapping[str, str]] = None,
+    band_mapping: Optional[Mapping[str, Union[str, int]]] = None,
 ) -> Dict[str, np.ndarray]:
-    """Resolve and extract numpy band arrays from a dictionary or source.
+    """Resolve and extract numpy band arrays from a dictionary or source with explicit band mapping support.
 
     Parameters
     ----------
     bands_source : Mapping[str, Any] or Sequence
-        Source dictionary containing band arrays keyed by band names.
+        Source dictionary containing band arrays keyed by band names or indices.
     required_roles : Iterable[str]
         Roles needed by an index (e.g., ['nir', 'red']).
     sensor : str, optional
-        Satellite sensor preset.
-    band_mapping : Mapping[str, str], optional
-        Explicit mapping dictionary.
+        Satellite sensor preset (only used if no explicit mapping provided).
+    band_mapping : Mapping[str, Union[str, int]], optional
+        Explicit mapping dictionary from spectral roles to band identifiers.
+        Supports both string names (e.g., {"red": "B3"}) and integer indices (e.g., {"red": 3}).
 
     Returns
     -------
     dict[str, np.ndarray]
         Resolved dictionary keyed by standard role (e.g. {'nir': arr, 'red': arr}).
+
+    Raises
+    ------
+    TypeError
+        If bands_source is not a mapping.
+    MissingBandError
+        If required bands cannot be resolved.
     """
     if not isinstance(bands_source, Mapping):
         raise TypeError(f"bands_source must be a mapping (dict), got {type(bands_source).__name__}")

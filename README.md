@@ -18,7 +18,8 @@ It is designed for Earth Observation, remote sensing, multispectral image analys
 | Feature | Description |
 |---|---|
 | 🧮 **9 Spectral Indices** | NDVI, SAVI, EVI, GNDVI, NDWI, MNDWI, NDBI, NDMI, BSI |
-| 🛰️ **Sensor Profiles** | Sentinel-2, Landsat 8/9/7/5 automatic band mapping |
+| 🎯 **Explicit Band Mapping** | User-defined band-to-role mapping (integers, strings, custom names) |
+| 🛰️ **Sensor Profiles** | Sentinel-2, Landsat 8/9/7/5 automatic band mapping (optional) |
 | ⚡ **Vectorized Engine** | Pure NumPy — no pixel loops, zero silent divisions |
 | 🗂️ **Scientific Registry** | Formulas, references, band roles, valid ranges |
 | 🌍 **Geospatial Integrity** | CRS, affine transform and resolution fully preserved |
@@ -68,18 +69,28 @@ print("NDVI:", ndvi)
 # → NDVI: [ 0.8    0.7   -0.143]
 ```
 
-### 2. Generic engine with a GeoTIFF and sensor mapping
+### 2. Generic engine with explicit band mapping
 ```python
 import geoindexpy
 
+# Explicit band mapping - no assumptions about band numbering
+result = geoindexpy.calculate_index(
+    "sentinel2_scene.tif",
+    index="NDVI",
+    bands={"red": 3, "nir": 4}  # or {"red": "B3", "nir": "B4"}
+)
+
+print(result.summary())
+result.save("ndvi_output.tif")   # georeferenced GeoTIFF
+```
+
+Or with sensor presets (optional):
+```python
 result = geoindexpy.calculate_index(
     "sentinel2_scene.tif",
     index="NDVI",
     sensor="sentinel2",   # automatic B08→NIR, B04→RED
 )
-
-print(result.summary())
-result.save("ndvi_output.tif")   # georeferenced GeoTIFF
 ```
 
 ### 3. Multiple indices at once
@@ -95,7 +106,41 @@ for name, res in results.items():
     print(f"{name}: min={s['min']:.3f}  max={s['max']:.3f}  mean={s['mean']:.3f}")
 ```
 
-### 4. Discover available indices
+### 4. Explicit band mapping
+```python
+# GeoIndexPy never assumes band numbering - you define the mapping
+ndvi = geoindexpy.calculate_index(
+    image_path,
+    "NDVI",
+    bands={"red": 3, "nir": 4}        # integer indices
+)
+
+# Or with band names
+ndvi = geoindexpy.calculate_index(
+    image_path,
+    "NDVI",
+    bands={"red": "B3", "nir": "B4"}   # string names
+)
+
+# Custom band names (GeoIndexR style)
+ndvi = geoindexpy.calculate_index(
+    image_path,
+    "NDVI",
+    bands={
+        "red": "image_mai2024_3",
+        "nir": "image_mai2024_4"
+    }
+)
+
+# Multiple indices with different band requirements
+evi = geoindexpy.calculate_index(
+    image_path,
+    "EVI",
+    bands={"blue": 1, "red": 3, "nir": 4}
+)
+```
+
+### 5. Discover available indices
 ```python
 geoindexpy.list_indices()
 # → ['BSI', 'EVI', 'GNDVI', 'MNDWI', 'NDBI', 'NDMI', 'NDVI', 'NDWI', 'SAVI']

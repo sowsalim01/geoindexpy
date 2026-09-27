@@ -12,7 +12,7 @@ from geoindexpy.raster.metadata import RasterMetadata
 
 @dataclass
 class RasterDataset:
-    """In-memory spatial raster containing bands and georeferencing metadata.
+    """In-memory spatial raster containing bands and georeferencing metadata with flexible band access.
 
     Attributes
     ----------
@@ -25,14 +25,29 @@ class RasterDataset:
     bands: Dict[str, np.ndarray]
     metadata: RasterMetadata
 
-    def __getitem__(self, key: str) -> np.ndarray:
+    def __getitem__(self, key: Union[str, int]) -> np.ndarray:
+        """Get band by name (string) or index (integer)."""
+        if isinstance(key, int):
+            # Convert 1-based index to band name
+            band_names = self.band_names()
+            if 1 <= key <= len(band_names):
+                return self.bands[band_names[key - 1]]
+            raise IndexError(f"Band index {key} out of range (1-{len(band_names)})")
         return self.bands[key]
 
-    def __contains__(self, key: str) -> bool:
+    def __contains__(self, key: Union[str, int]) -> bool:
+        """Check if band exists by name (string) or index (integer)."""
+        if isinstance(key, int):
+            band_names = self.band_names()
+            return 1 <= key <= len(band_names)
         return key in self.bands
 
     def band_names(self) -> List[str]:
         return list(self.bands.keys())
+
+    def band_count(self) -> int:
+        """Return the number of bands in the dataset."""
+        return len(self.bands)
 
     @property
     def shape(self) -> tuple[int, int]:

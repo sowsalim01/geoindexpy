@@ -830,6 +830,48 @@ python test_complet.py
 
 ### Problèmes Courants
 
+#### Problème Spécifique : Données Brutes Sentinel-2
+
+**Symptôme**: Les indices calculés ont des valeurs anormales (ex: EVI min=-1597.5, max=2245 au lieu de [-1, 1])
+
+**Cause**: Les bandes d'entrée contiennent des valeurs brutes (DN) au lieu de réflectance (0-1)
+
+**Solution**: Convertir les données brutes en réflectance avant calcul
+
+```python
+import os
+import numpy as np
+import geoindexpy
+
+# Nettoyage PROJ
+for var in ("PROJ_LIB", "PROJ_DATA"):
+    val = os.environ.get(var, "")
+    if val and ("postgres" in val.lower() or not os.path.exists(os.path.join(val, "proj.db"))):
+        os.environ.pop(var, None)
+
+votre_image = "chemin/vers/image.tif"
+dataset = geoindexpy.open_raster(votre_image)
+
+# Vérifier les valeurs brutes
+print(f"Valeurs brutes: min={np.min(dataset.bands['B1'])}, max={np.max(dataset.bands['B1'])}")
+
+# Conversion en réflectance
+SCALE_FACTOR = 12000.0  # Ajuster selon vos données (ex: 10000 pour max≈10000)
+reflectance_bands = {}
+for role, band_name in {"blue": "B1", "green": "B2", "red": "B3", "nir": "B4"}.items():
+    if band_name in dataset.bands:
+        reflectance_bands[role] = np.clip(dataset.bands[band_name] / SCALE_FACTOR, 0.0, 1.0)
+
+# Calcul avec données converties
+evi_result = geoindexpy.calculate_index(image=reflectance_bands, index="EVI")
+print(f"EVI corrigé: min={evi_result.summary()['min']:.4f}, max={evi_result.summary()['max']:.4f}")
+```
+
+**Facteurs d'échelle courants**:
+- Sentinel-2 L2A/L1C: 10000-12000
+- Données 8-bit: 255
+- Données 16-bit: 65535
+
 #### 1. Erreur PROJ_LIB
 ```python
 import os

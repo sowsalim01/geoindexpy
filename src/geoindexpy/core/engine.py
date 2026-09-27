@@ -42,11 +42,11 @@ def _prepare_bands_and_metadata(
 def calculate_index(
     image: RasterInput,
     index: str,
-    bands: Optional[Mapping[str, str]] = None,
+    bands: Optional[Mapping[str, Union[str, int]]] = None,
     sensor: Optional[str] = None,
     params: Optional[Mapping[str, float]] = None,
 ) -> IndexResult:
-    """Calculate a single spectral index on an input raster or band dictionary.
+    """Calculate a single spectral index on an input raster or band dictionary with explicit band mapping.
 
     Parameters
     ----------
@@ -54,10 +54,14 @@ def calculate_index(
         Input image, dictionary of band arrays, or raster filepath.
     index : str
         Short name of the index to calculate (e.g. 'NDVI', 'NDWI').
-    bands : Mapping[str, str], optional
-        Explicit mapping from standard role to band name (e.g. {'nir': 'B08', 'red': 'B04'}).
+    bands : Mapping[str, Union[str, int]], optional
+        Explicit mapping from standard role to band identifier.
+        Supports both string names (e.g., {'nir': 'B08', 'red': 'B04'}) 
+        and integer indices (e.g., {'nir': 4, 'red': 3}).
+        This takes priority over sensor presets.
     sensor : str, optional
         Satellite sensor preset name (e.g. 'sentinel2', 'landsat8').
+        Only used if no explicit band mapping is provided.
     params : Mapping[str, float], optional
         Custom index hyperparameters to override defaults (e.g. {'L': 0.5}).
 
@@ -65,13 +69,20 @@ def calculate_index(
     -------
     IndexResult
         Result object with computed array, spatial metadata, and summary statistics.
+
+    Raises
+    ------
+    MissingBandError
+        If required bands are missing or explicit mapping points to non-existent bands.
+    IncompatibleRasterError
+        If bands have incompatible spatial dimensions.
     """
     registry = get_registry()
     index_def = registry.get(index)
 
     bands_dict, metadata = _prepare_bands_and_metadata(image)
 
-    # Resolve required bands
+    # Resolve required bands with explicit user mapping priority
     resolver = BandResolver(
         available_band_names=bands_dict.keys(),
         sensor=sensor,
@@ -116,11 +127,11 @@ def calculate_index(
 def calculate_indices(
     image: RasterInput,
     indices: Sequence[str],
-    bands: Optional[Mapping[str, str]] = None,
+    bands: Optional[Mapping[str, Union[str, int]]] = None,
     sensor: Optional[str] = None,
     params: Optional[Mapping[str, Mapping[str, float]]] = None,
 ) -> Dict[str, IndexResult]:
-    """Calculate multiple spectral indices simultaneously on an input raster.
+    """Calculate multiple spectral indices simultaneously on an input raster with explicit band mapping.
 
     Parameters
     ----------
@@ -128,10 +139,12 @@ def calculate_indices(
         Input raster source.
     indices : Sequence[str]
         List of index names to compute (e.g. ['NDVI', 'NDWI', 'NDBI']).
-    bands : Mapping[str, str], optional
-        Explicit band mapping.
+    bands : Mapping[str, Union[str, int]], optional
+        Explicit mapping from standard role to band identifier.
+        Supports both string names and integer indices.
+        This takes priority over sensor presets.
     sensor : str, optional
-        Satellite sensor preset.
+        Satellite sensor preset. Only used if no explicit band mapping is provided.
     params : Mapping[str, Mapping[str, float]], optional
         Nested parameter dictionary per index name.
 
